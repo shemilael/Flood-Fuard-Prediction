@@ -35,7 +35,7 @@
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/floodguard-dashboard.git
+   git clone https://github.com/shemilael/Flood-Guard-Prediction.git
    ```
 2. **Open `index.html` in your browser**.
 3. **Customize**:
