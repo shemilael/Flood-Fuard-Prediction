@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloodGuard - Early Flood Detection System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .risk-low { background-color: #10B981; }
+        .risk-moderate { background-color: #F59E0B; }
+        .risk-high { background-color: #EF4444; }
+        .risk-extreme { background-color: #7C3AED; }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .map-container {
+            height: 400px;
+            background-image: url('https://maps.googleapis.com/maps/api/staticmap?center=Indonesia&zoom=5&size=800x400&maptype=roadmap&key=YOUR_API_KEY');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .flood-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="flex items-center mb-4 md:mb-0">
+                        <i class="fas fa-water text-3xl mr-3"></i>
+                        <div>
+                            <h1 class="text-2xl font-bold">FloodGuard</h1>
+                            <p class="text-blue-200 text-sm">Early Flood Detection System</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="bg-blue-700 px-4 py-2 rounded-lg">
+                            <p class="text-sm">Last Updated</p>
+                            <p id="update-time" class="font-semibold">Loading...</p>
+                        </div>
+                        <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-sync-alt mr-2"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <!-- Alert Section -->
+            <div id="alert-section" class="mb-8 hidden">
+                <div class="bg-red-600 text-white p-4 rounded-lg shadow-lg flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle text-2xl mr-4"></i>
+                        <div>
+                            <h3 class="font-bold text-lg">Flood Warning!</h3>
+                            <p id="alert-message">High risk of flooding detected in multiple areas</p>
+                        </div>
+                    </div>
+                    <button class="bg-white text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100">
+                        View Details
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Risk Overview -->
+                <div class="bg-white rounded-xl shadow-lg p-6 col-span-1">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">Current Flood Risk</h2>
+                    <div class="flex items-center justify-center mb-4">
+                        <div id="risk-gauge" class="w-40 h-40 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                            Loading...
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 text-center">
+                        <div class="risk-low p-2 rounded text-white text-sm">Low</div>
+                        <div class="risk-moderate p-2 rounded text-white text-sm">Moderate</div>
+                        <div class="risk-high p-2 rounded text-white text-sm">High</div>
+                        <div class="risk-extreme p-2 rounded text-white text-sm">Extreme</div>
+                    </div>
+                </div>
+
+                <!-- Weather Data -->
+                <div class="bg-white rounded-xl shadow-lg p-6 col-span-1">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">Weather Conditions</h2>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <i class="fas fa-temperature-high text-red-500 text-xl mr-3"></i>
+                                <span>Temperature</span>
+                            </div>
+                            <span id="temperature" class="font-semibold">--°C</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <i class="fas fa-cloud-rain text-blue-500 text-xl mr-3"></i>
+                                <span>Precipitation</span>
+                            </div>
+                            <span id="precipitation" class="font-semibold">-- mm</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <i class="fas fa-wind text-gray-500 text-xl mr-3"></i>
+                                <span>Wind Speed</span>
+                            </div>
+                            <span id="wind-speed" class="font-semibold">-- km/h</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center">
+                                <i class="fas fa-tint text-blue-300 text-xl mr-3"></i>
+                                <span>Humidity</span>
+                            </div>
+                            <span id="humidity" class="font-semibold">--%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Prediction -->
+                <div class="bg-white rounded-xl shadow-lg p-6 col-span-1">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">AI Flood Prediction</h2>
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-sm font-medium">Flood Probability</span>
+                            <span id="flood-probability" class="text-sm font-medium">--%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="probability-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <h3 class="font-semibold mb-2">Model Confidence</h3>
+                        <div class="flex items-center">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="confidence-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span id="confidence-value" class="ml-2 text-sm font-medium">--%</span>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-3 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-800" id="ai-message">Analyzing real-time weather data...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map and Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Map -->
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="p-4 border-b">
+                        <h2 class="text-xl font-bold text-gray-800">Flood Risk Map</h2>
+                    </div>
+                    <div class="map-container relative">
+                        <!-- Flood markers will be added here dynamically -->
+                    </div>
+                    <div class="p-4 bg-gray-50">
+                        <div class="flex flex-wrap gap-2">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+                                <span class="text-xs">Low Risk</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-yellow-500 mr-1"></div>
+                                <span class="text-xs">Moderate Risk</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
+                                <span class="text-xs">High Risk</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 rounded-full bg-purple-500 mr-1"></div>
+                                <span class="text-xs">Extreme Risk</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rainfall Chart -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">Rainfall Analysis</h2>
+                    <div class="h-64">
+                        <canvas id="rainfall-chart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-600">
+                        <p>Historical rainfall data compared to flood threshold levels</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- High Risk Areas -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+                <div class="p-4 border-b">
+                    <h2 class="text-xl font-bold text-gray-800">High Risk Areas</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Level</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rainfall</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Water Level</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alert</th>
+                            </tr>
+                        </thead>
+                        <tbody id="risk-areas-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center">Loading data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <h3 class="text-lg font-semibold">FloodGuard</h3>
+                        <p class="text-gray-400 text-sm">Powered by BMKG Weather Data and AI</p>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <i class="fab fa-github"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-envelope"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-700 text-center text-sm text-gray-400">
+                    <p>© 2023 FloodGuard Early Detection System. Data sourced from BMKG.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Simulate fetching data from BMKG API
+        async function fetchWeatherData() {
+            // In a real application, this would fetch from https://github.com/infoBMKG/data-cuaca
+            // For demo purposes, we'll simulate the data
+            
+            // Update timestamp
+            const now = new Date();
+            document.getElementById('update-time').textContent = now.toLocaleString();
+            
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Generate random weather data
+            const temperature = (Math.random() * 15 + 20).toFixed(1);
+            const precipitation = (Math.random() * 50).toFixed(1);
+            const windSpeed = (Math.random() * 30).toFixed(1);
+            const humidity = (Math.random() * 50 + 50).toFixed(0);
+            
+            // Update weather display
+            document.getElementById('temperature').textContent = `${temperature}°C`;
+            document.getElementById('precipitation').textContent = `${precipitation} mm`;
+            document.getElementById('wind-speed').textContent = `${windSpeed} km/h`;
+            document.getElementById('humidity').textContent = `${humidity}%`;
+            
+            // Calculate flood risk (simplified for demo)
+            let floodProbability = 0;
+            if (parseFloat(precipitation) > 40) floodProbability = 80;
+            else if (parseFloat(precipitation) > 30) floodProbability = 60;
+            else if (parseFloat(precipitation) > 20) floodProbability = 30;
+            else floodProbability = 10;
+            
+            // Add some randomness
+            floodProbability += (Math.random() * 20 - 10);
+            floodProbability = Math.max(0, Math.min(100, floodProbability));
+            
+            // Update flood probability display
+            document.getElementById('flood-probability').textContent = `${floodProbability.toFixed(0)}%`;
+            document.getElementById('probability-bar').style.width = `${floodProbability}%`;
+            
+            // Update model confidence (higher when precipitation is extreme)
+            const confidence = 80 + (Math.random() * 20 - 10);
+            document.getElementById('confidence-value').textContent = `${confidence.toFixed(0)}%`;
+            document.getElementById('confidence-bar').style.width = `${confidence}%`;
+            
+            // Update risk gauge
+            updateRiskGauge(floodProbability);
+            
+            // Update AI message
+            updateAIMessage(floodProbability, precipitation);
+            
+            // Update map with random risk locations
+            updateRiskMap();
+            
+            // Update high risk areas table
+            updateRiskAreasTable();
+            
+            // Update rainfall chart
+            updateRainfallChart();
+            
+            // Show/hide alert based on risk
+            if (floodProbability > 70) {
+                document.getElementById('alert-section').classList.remove('hidden');
+                document.getElementById('alert-message').textContent = `High flood risk detected (${floodProbability.toFixed(0)}% probability) due to heavy rainfall (${precipitation} mm)`;
+            } else {
+                document.getElementById('alert-section').classList.add('hidden');
+            }
+        }
+        
+        function updateRiskGauge(probability) {
+            const gauge = document.getElementById('risk-gauge');
+            gauge.innerHTML = '';
+            
+            let riskLevel, riskClass, riskText;
+            
+            if (probability > 80) {
+                riskLevel = 'Extreme';
+                riskClass = 'risk-extreme pulse-animation';
+                riskText = 'EVACUATE!';
+            } else if (probability > 60) {
+                riskLevel = 'High';
+                riskClass = 'risk-high pulse-animation';
+                riskText = 'WARNING!';
+            } else if (probability > 30) {
+                riskLevel = 'Moderate';
+                riskClass = 'risk-moderate';
+                riskText = 'CAUTION';
+            } else {
+                riskLevel = 'Low';
+                riskClass = 'risk-low';
+                riskText = 'SAFE';
+            }
+            
+            gauge.className = `w-40 h-40 rounded-full flex items-center justify-center text-white font-bold text-2xl ${riskClass}`;
+            gauge.innerHTML = `
+                <div class="text-center">
+                    <div class="text-3xl">${riskText}</div>
+                    <div class="text-sm mt-1">${riskLevel} Risk</div>
+                </div>
+            `;
+        }
+        
+        function updateAIMessage(probability, precipitation) {
+            const aiMessage = document.getElementById('ai-message');
+            
+            if (probability > 80) {
+                aiMessage.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> <strong>Extreme flood risk!</strong> ${precipitation}mm of rainfall detected with ${probability.toFixed(0)}% probability of flooding. Immediate action recommended.`;
+                aiMessage.className = 'text-sm text-red-800 bg-red-100 p-2 rounded-lg';
+            } else if (probability > 60) {
+                aiMessage.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> <strong>High flood risk!</strong> ${precipitation}mm of rainfall may cause flooding (${probability.toFixed(0)}% probability). Prepare emergency plans.`;
+                aiMessage.className = 'text-sm text-orange-800 bg-orange-100 p-2 rounded-lg';
+            } else if (probability > 30) {
+                aiMessage.innerHTML = `<i class="fas fa-info-circle mr-2"></i> Moderate flood risk (${probability.toFixed(0)}%) due to ${precipitation}mm rainfall. Monitor conditions.`;
+                aiMessage.className = 'text-sm text-yellow-800 bg-yellow-100 p-2 rounded-lg';
+            } else {
+                aiMessage.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Low flood risk (${probability.toFixed(0)}%). Current conditions are stable with ${precipitation}mm rainfall.`;
+                aiMessage.className = 'text-sm text-green-800 bg-green-100 p-2 rounded-lg';
+            }
+        }
+        
+        function updateRiskMap() {
+            const mapContainer = document.querySelector('.map-container');
+            
+            // Clear existing markers
+            const existingMarkers = document.querySelectorAll('.flood-marker');
+            existingMarkers.forEach(marker => marker.remove());
+            
+            // Add random markers (in a real app, these would be actual coordinates)
+            for (let i = 0; i < 8; i++) {
+                const marker = document.createElement('div');
+                marker.className = 'flood-marker';
+                
+                // Random position on map
+                const left = 10 + Math.random() * 80;
+                const top = 10 + Math.random() * 80;
+                
+                // Random risk level
+                const risk = Math.random();
+                if (risk > 0.8) {
+                    marker.style.backgroundColor = '#7C3AED'; // Extreme
+                    marker.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.3)';
+                } else if (risk > 0.6) {
+                    marker.style.backgroundColor = '#EF4444'; // High
+                    marker.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.3)';
+                } else if (risk > 0.3) {
+                    marker.style.backgroundColor = '#F59E0B'; // Moderate
+                    marker.style.boxShadow = '0 0 0 4px rgba(245, 158, 11, 0.3)';
+                } else {
+                    marker.style.backgroundColor = '#10B981'; // Low
+                    marker.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.3)';
+                }
+                
+                marker.style.left = `${left}%`;
+                marker.style.top = `${top}%`;
+                
+                mapContainer.appendChild(marker);
+            }
+        }
+        
+        function updateRiskAreasTable() {
+            const locations = [
+                'Jakarta', 'Bandung', 'Semarang', 'Surabaya', 'Medan',
+                'Palembang', 'Makassar', 'Balikpapan', 'Manado', 'Jayapura'
+            ];
+            
+            const tableBody = document.getElementById('risk-areas-body');
+            tableBody.innerHTML = '';
+            
+            for (let i = 0; i < 5; i++) {
+                const randomLoc = locations[Math.floor(Math.random() * locations.length)];
+                const rainfall = (Math.random() * 60).toFixed(1);
+                const waterLevel = (Math.random() * 10).toFixed(1);
+                
+                let riskLevel, riskClass;
+                if (rainfall > 40) {
+                    riskLevel = 'Extreme';
+                    riskClass = 'bg-purple-100 text-purple-800';
+                } else if (rainfall > 30) {
+                    riskLevel = 'High';
+                    riskClass = 'bg-red-100 text-red-800';
+                } else if (rainfall > 20) {
+                    riskLevel = 'Moderate';
+                    riskClass = 'bg-yellow-100 text-yellow-800';
+                } else {
+                    riskLevel = 'Low';
+                    riskClass = 'bg-green-100 text-green-800';
+                }
+                
+                const alertIcon = rainfall > 30 ? 
+                    '<i class="fas fa-exclamation-triangle text-red-500"></i>' : 
+                    '<i class="fas fa-check-circle text-green-500"></i>';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="text-sm font-medium text-gray-900">${randomLoc}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${riskClass}">
+                            ${riskLevel}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${rainfall} mm
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${waterLevel} m
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        ${alertIcon}
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+        }
+        
+        let rainfallChart;
+        function updateRainfallChart() {
+            const ctx = document.getElementById('rainfall-chart').getContext('2d');
+            
+            // Generate random data for last 7 days
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const rainfallData = days.map(() => Math.random() * 50);
+            const floodThreshold = days.map(() => 30);
+            
+            if (rainfallChart) {
+                rainfallChart.destroy();
+            }
+            
+            rainfallChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: 'Rainfall (mm)',
+                            data: rainfallData,
+                            backgroundColor: '#3B82F6',
+                            borderColor: '#1D4ED8',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Flood Threshold',
+                            data: floodThreshold,
+                            type: 'line',
+                            borderColor: '#EF4444',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#EF4444',
+                            pointRadius: 3,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Rainfall (mm)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y.toFixed(1) + 'mm';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchWeatherData();
+            
+            // Set up refresh button
+            document.getElementById('refresh-btn').addEventListener('click', () => {
+                document.getElementById('refresh-btn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Refreshing';
+                fetchWeatherData().then(() => {
+                    document.getElementById('refresh-btn').innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Refresh';
+                });
+            });
+            
+            // Simulate real-time updates every 30 seconds
+            setInterval(fetchWeatherData, 30000);
+        });
+    </script>
+</body>
+</html>
