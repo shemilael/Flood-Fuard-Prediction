@@ -29,7 +29,12 @@
 
 ## 📸 UI Preview
 
-> _Insert a screenshot here if needed (e.g., `dashboard.png`)_
+> <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/40457a1f-9eb3-4cad-91df-8235a69be3e1" />
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/2bd12ce2-76a0-44bd-b42f-78b7c1d85fde" />
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/fb6b272b-6ef6-4438-a9eb-1d5f457c6b40" />
+
+
+_
 
 ## 🛠️ How to Use
 
